@@ -100,8 +100,8 @@ if st.button("⚖️ Bandingkan dan Analisis", type="primary", use_container_wid
                     c2.image(img_crop2, caption="Wajah 2 (Asli)")
                     
                     # Rekonstruksi balik dari PCA ke Gambar (Biar keliatan kerjanya PCA)
-                    rekon1 = pca_model.inverse_transform(vec1).reshape(64, 64)
-                    rekon2 = pca_model.inverse_transform(vec2).reshape(64, 64)
+                    rekon1 = pca_model.inverse_transform([vec1]).reshape(64, 64)
+                    rekon2 = pca_model.inverse_transform([vec2]).reshape(64, 64)
                     
                     c3.image(np.clip(rekon1, 0, 255).astype(np.uint8), caption="Rekonstruksi PCA 1")
                     c4.image(np.clip(rekon2, 0, 255).astype(np.uint8), caption="Rekonstruksi PCA 2")
