@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Perbandingan Wajah - Face Recognition</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 1200px;
+            width: 100%;
+            padding: 40px;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .upload-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .upload-section {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+        }
+
+        .image-box {
+            text-align: center;
+        }
+
+        .image-box h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .image-box p {
+            color: #999;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+            position: relative;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .upload-area:hover {
+            background: #eff1ff;
+            border-color: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        .upload-area.dragover {
+            background: #e8ebff;
+            border-color: #764ba2;
+            box-shadow: 0 0 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .upload-area input[type="file"] {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .upload-area p {
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .upload-area small {
+            color: #999;
+        }
+
+        .image-preview {
+            position: relative;
+            margin-top: 20px;
+        }
+
+        .image-preview img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .image-preview canvas {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            object-fit: contain; /* PERBAIKAN: Mencegah gambar terpotong/gepeng */
+        }
+
+        .remove-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 1.2em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .remove-btn:hover {
+            background: #ff3838;
+            transform: scale(1.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-compare {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            font-size: 1.1em;
+        }
+
+        .btn-compare:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-compare:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-reset {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-reset:hover {
+            background: #d0d0d0;
+            transform: translateY(-2px);
+        }
+
+        .results-section {
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .results-section.active {
+            display: block;
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .similarity-score {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .score-number {
+            font-size: 3.5em;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .score-label {
+            color: #666;
+            font-size: 1.2em;
+            margin-top: 10px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        .result-details {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            color: #666;
+            font-weight: 600;
+        }
+
+        .detail-value {
+            color: #333;
+            font-weight: 600;
+        }
+
+        .conclusion {
+            background: white;
+            border-left: 5px solid #667eea;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .conclusion.match {
+            border-left-color: #2ed573;
+            background: #f0fef4;
+        }
+
+        .conclusion.not-match {
+            border-left-color: #ff4757;
+            background: #fff5f5;
+        }
+
+        .conclusion h4 {
+            font-size: 1.3em;
+            margin-bottom: 10px;
+        }
+
+        .conclusion.match h4 {
+            color: #2ed573;
+        }
+
+        .conclusion.not-match h4 {
+            color: #ff4757;
+        }
+
+        .conclusion p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #666;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+
+        .error-message {
+            background: #fff5f5;
+            border: 2px solid #ff4757;
+            border-radius: 10px;
+            padding: 20px;
+            color: #ff4757;
+            margin: 20px 0;
+            text-align: center;
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .info-box {
+            background: #f0f7ff;
+            border-left: 5px solid #667eea;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .info-box h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .info-box ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .info-box li {
+            padding: 5px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+
+        .info-box li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .face-detection-info {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .face-detection-info h5 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .detection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .detection-item {
+            background: #f8f9ff;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid #e0e0ff;
+        }
+
+        .detection-item label {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 0.9em;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .detection-item .value {
+            color: #333;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .score-number {
+                font-size: 2.5em;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Perbandingan Wajah AI</h1>
+        <p class="subtitle">Analisis Kemiripan Wajah dengan Teknologi Machine Learning</p>
+
+        <div class="info-box">
+            <h4>ℹ️ Cara Menggunakan:</h4>
+            <ul>
+                <li>Unggah foto masa lalu (foto pertama)</li>
+                <li>Unggah foto sekarang (foto kedua)</li>
+                <li>Klik tombol "Bandingkan Wajah"</li>
+                <li>Lihat hasil analisis kemiripan</li>
+            </ul>
+        </div>
+
+        <div class="upload-section">
+            <div class="image-box">
+                <h3>📷 Foto Masa Lalu</h3>
+                <p>Unggah foto masa kecil atau foto lama Anda</p>
+                <div class="upload-area" id="uploadArea1">
+                    <div class="upload-icon">📸</div>
+                    <p>Klik atau Tarik Foto di Sini</p>
+                    <small>Format: JPG, PNG | Max: 5MB</small>
+                    <input type="file" id="imageInput1" accept="image/*">
+                </div>
+                <div class="image-preview" id="preview1"></div>
+            </div>
+
+            <div class="image-box">
+                <h3>📷 Foto Sekarang</h3>
+                <p>Unggah foto terkini Anda</p>
+                <div class="upload-area" id="uploadArea2">
+                    <div class="upload-icon">📷</div>
+                    <p>Klik atau Tarik Foto di Sini</p>
+                    <small>Format: JPG, PNG | Max: 5MB</small>
+                    <input type="file" id="imageInput2" accept="image/*">
+                </div>
+                <div class="image-preview" id="preview2"></div>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button class="btn-compare" id="compareBtn" disabled>
+                ⚖️ Bandingkan Wajah
+            </button>
+            <button class="btn-reset" id="resetBtn">
+                🔄 Reset
+            </button>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="loading" id="loadingSpinner">
+            <div class="spinner"></div>
+            <p class="loading-text">Menganalisis wajah... Mohon tunggu</p>
+        </div>
+
+        <div class="results-section" id="resultsSection">
+            <div class="result-card">
+                <div class="similarity-score">
+                    <div class="score-number" id="scorePercentage">0%</div>
+                    <div class="score-label">Tingkat Kemiripan Wajah</div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                </div>
+
+                <div class="result-details">
+                    <div class="detail-item">
+                        <span class="detail-label">Jarak Euclidean:</span>
+                        <span class="detail-value" id="euclideanDistance">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Kesamaan Kosinus:</span>
+                        <span class="detail-value" id="cosineSimilarity">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Wajah Terdeteksi (Foto 1):</span>
+                        <span class="detail-value" id="faces1">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Wajah Terdeteksi (Foto 2):</span>
+                        <span class="detail-value" id="faces2">-</span>
+                    </div>
+                </div>
+
+                <div class="face-detection-info">
+                    <h5>📊 Analisis Fitur Wajah (Foto 1):</h5>
+                    <div class="detection-grid" id="facialFeatures1">
+                        </div>
+                </div>
+
+                <div class="face-detection-info">
+                    <h5>📊 Analisis Fitur Wajah (Foto 2):</h5>
+                    <div class="detection-grid" id="facialFeatures2">
+                        </div>
+                </div>
+
+                <div class="conclusion" id="conclusionBox">
+                    <h4>📋 Kesimpulan</h4>
+                    <p id="conclusionText">-</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script async defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+
+    <script>
+        // ============== CONFIGURATION ==============
+        const CONFIG = {
+            minConfidence: 0.5,
+            matchThreshold: 0.6,
+            smallestFaceSize: 20
+        };
+
+        // ============== STATE MANAGEMENT ==============
+        let state = {
+            image1: null,
+            image2: null,
+            descriptor1: null,
+            descriptor2: null,
+            detections1: null,
+            detections2: null,
+            modelsLoaded: false
+        };
+
+        // ============== DOM ELEMENTS ==============
+        const elements = {
+            uploadArea1: document.getElementById('uploadArea1'),
+            uploadArea2: document.getElementById('uploadArea2'),
+            imageInput1: document.getElementById('imageInput1'),
+            imageInput2: document.getElementById('imageInput2'),
+            preview1: document.getElementById('preview1'),
+            preview2: document.getElementById('preview2'),
+            compareBtn: document.getElementById('compareBtn'),
+            resetBtn: document.getElementById('resetBtn'),
+            loadingSpinner: document.getElementById('loadingSpinner'),
+            resultsSection: document.getElementById('resultsSection'),
+            errorMessage: document.getElementById('errorMessage'),
+            scorePercentage: document.getElementById('scorePercentage'),
+            progressFill: document.getElementById('progressFill'),
+            euclideanDistance: document.getElementById('euclideanDistance'),
+            cosineSimilarity: document.getElementById('cosineSimilarity'),
+            faces1: document.getElementById('faces1'),
+            faces2: document.getElementById('faces2'),
+            facialFeatures1: document.getElementById('facialFeatures1'),
+            facialFeatures2: document.getElementById('facialFeatures2'),
+            conclusionBox: document.getElementById('conclusionBox'),
+            conclusionText: document.getElementById('conclusionText')
+        };
+
+        // ============== UTILITY FUNCTIONS ==============
+        function showLoading(show) {
+            if (show) {
+                elements.loadingSpinner.classList.add('active');
+            } else {
+                elements.loadingSpinner.classList.remove('active');
+            }
+        }
+
+        function showError(message) {
+            if (message) {
+                elements.errorMessage.textContent = message;
+                elements.errorMessage.classList.add('show');
+            } else {
+                elements.errorMessage.classList.remove('show');
+                elements.errorMessage.textContent = '';
+            }
+        }
+
+        function updateCompareButtonState() {
+            elements.compareBtn.disabled = !state.image1 || !state.image2;
+        }
+
+        function updateConclusion(similarity) {
+            const conclusionBox = elements.conclusionBox;
+            const conclusionText = elements.conclusionText;
+
+            if (similarity.match) {
+                conclusionBox.classList.remove('not-match');
+                conclusionBox.classList.add('match');
+                conclusionText.textContent = `Berdasarkan analisis AI, kedua wajah menunjukkan kemiripan yang tinggi dengan tingkat kesamaan ${similarity.percentage}%. Kemungkinan besar wajah pada kedua foto adalah orang yang sama.`;
+            } else {
+                conclusionBox.classList.remove('match');
+                conclusionBox.classList.add('not-match');
+                conclusionText.textContent = `Berdasarkan analisis AI, kedua wajah menunjukkan perbedaan yang signifikan dengan tingkat kesamaan hanya ${similarity.percentage}%. Kemungkinan kedua foto adalah orang yang berbeda.`;
+            }
+        }
+
+        function reset() {
+            state.image1 = null;
+            state.image2 = null;
+            state.descriptor1 = null;
+            state.descriptor2 = null;
+            state.detections1 = null;
+            state.detections2 = null;
+
+            elements.preview1.innerHTML = '';
+            elements.preview2.innerHTML = '';
+            elements.imageInput1.value = '';
+            elements.imageInput2.value = '';
+            elements.resultsSection.classList.remove('active');
+            showError('');
+
+            updateCompareButtonState();
+        }
+
+        // ============== INITIALIZATION ==============
+        async function waitForFaceAPI() {
+            let attempts = 0;
+            const maxAttempts = 600; // Dinaikkan menjadi 60 detik (600 x 100ms)
+
+            // Wait for faceapi global to be available
+            while (typeof faceapi === 'undefined' && attempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+
+            if (typeof faceapi === 'undefined') {
+                throw new Error('Face-API library gagal dimuat setelah 60 detik');
+            }
+
+            console.log('✅ Face-API library ditemukan, menunggu nets...');
+
+            // Wait for nets to be initialized (PERBAIKAN: Gunakan ssdMobilenetv1)
+            attempts = 0;
+            while (attempts < maxAttempts) {
+                if (faceapi.nets && 
+                    faceapi.nets.ssdMobilenetv1 && 
+                    faceapi.nets.faceLandmark68Net &&
+                    faceapi.nets.faceRecognitionNet &&
+                    faceapi.nets.faceExpressionNet &&
+                    faceapi.nets.ageGenderNet) {
+                    console.log('✅ Semua nets tersedia');
+                    return true;
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+
+            throw new Error('Face-API nets tidak selesai diinisialisasi setelah 60 detik');
+        }
+
+        async function init() {
+            try {
+                showLoading(true);
+                showError('');
+                
+                console.log('🔄 Memulai loading model AI...');
+
+                // Wait for Face-API library to be available
+                await waitForFaceAPI();
+                console.log('📚 Face-API library berhasil dimuat');
+
+                // Load Face-API models using correct CDN URL
+                const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+                
+                console.log('📥 Loading models from:', MODEL_URL);
+
+                // PERBAIKAN: Gunakan ssdMobilenetv1 di sini juga
+                const loadPromise = Promise.all([
+                    faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
+                    faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL)
+                ]);
+
+                // Set timeout to prevent infinite loading (Dinaikkan menjadi 60 detik)
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Model loading timeout - melebihi 60 detik')), 60000)
+                );
+
+                await Promise.race([loadPromise, timeoutPromise]);
+                
+                state.modelsLoaded = true;
+                console.log('✅ Model AI berhasil dimuat');
+                showError('✅ Model AI siap digunakan');
+                
+                setTimeout(() => {
+                    showLoading(false);
+                    showError('');
+                }, 1500);
+            } catch (error) {
+                console.error('❌ Error loading models:', error);
+                const errorMsg = error.message || 'Gagal memuat model AI';
+                showError(`Gagal memuat model AI: ${errorMsg}. Silakan refresh halaman dan coba lagi.`);
+                showLoading(false);
+            }
+        }
+
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+
+        // ============== EVENT LISTENERS ==============
+        elements.uploadArea1.addEventListener('click', () => elements.imageInput1.click());
+        elements.uploadArea2.addEventListener('click', () => elements.imageInput2.click());
+
+        // Drag and drop
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            elements.uploadArea1.addEventListener(eventName, handleDrag, false);
+            elements.uploadArea2.addEventListener(eventName, handleDrag, false);
+        });
+
+        elements.imageInput1.addEventListener('change', (e) => handleImageUpload(e, 1));
+        elements.imageInput2.addEventListener('change', (e) => handleImageUpload(e, 2));
+        elements.compareBtn.addEventListener('click', compareImages);
+        elements.resetBtn.addEventListener('click', reset);
+
+        // ============== FILE UPLOAD HANDLERS ==============
+        function handleDrag(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const uploadArea = e.currentTarget;
+            
+            if (e.type === 'dragover' || e.type === 'dragenter') {
+                uploadArea.classList.add('dragover');
+            } else {
+                uploadArea.classList.remove('dragover');
+            }
+
+            if (e.type === 'drop') {
+                uploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length) {
+                    const input = uploadArea.querySelector('input[type="file"]');
+                    input.files = files;
+                    handleImageUpload({ target: input }, uploadArea === elements.uploadArea1 ? 1 : 2);
+                }
+            }
+        }
+
+        function handleImageUpload(e, imageNum) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Validasi file
+            if (!file.type.startsWith('image/')) {
+                showError('Silakan unggah file gambar yang valid');
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                showError('Ukuran file terlalu besar (max 5MB)');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                displayImage(event.target.result, imageNum);
+            };
+            reader.readAsDataURL(file);
+
+            showError('');
+        }
+
+        // PERBAIKAN PADA FUNGSI DISPLAY IMAGE AGAR FOTO TIDAK TERPOTONG
+        function displayImage(src, imageNum) {
+            const preview = imageNum === 1 ? elements.preview1 : elements.preview2;
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+
+            img.onload = () => {
+                // 1. Sesuaikan ukuran canvas dengan resolusi asli gambar
+                canvas.width = img.width;
+                canvas.height = img.height;
+                
+                // 2. Gambar foto ke dalam canvas
+                ctx.drawImage(img, 0, 0);
+
+                // 3. Bersihkan area preview dan siapkan tombol silang (hapus)
+                preview.innerHTML = `
+                    <button class="remove-btn" onclick="removeImage(${imageNum})">×</button>
+                `;
+                
+                // 4. Sisipkan canvas yang sudah jadi langsung ke UI
+                canvas.id = `canvas${imageNum}`;
+                preview.insertBefore(canvas, preview.firstChild);
+
+                // 5. Simpan state untuk AI
+                if (imageNum === 1) {
+                    state.image1 = canvas;
+                } else {
+                    state.image2 = canvas;
+                }
+
+                updateCompareButtonState();
+                showError('');
+            };
+
+            img.onerror = () => {
+                showError('Gagal memuat gambar. Silakan coba lagi.');
+            };
+
+            img.src = src;
+        }
+
+        function removeImage(imageNum) {
+            const preview = imageNum === 1 ? elements.preview1 : elements.preview2;
+            const input = imageNum === 1 ? elements.imageInput1 : elements.imageInput2;
+            
+            preview.innerHTML = '';
+            input.value = '';
+            
+            if (imageNum === 1) {
+                state.image1 = null;
+                state.descriptor1 = null;
+                state.detections1 = null;
+            } else {
+                state.image2 = null;
+                state.descriptor2 = null;
+                state.detections2 = null;
+            }
+
+            updateCompareButtonState();
+        }
+
+        // ============== IMAGE COMPARISON ==============
+        async function compareImages() {
+    const file1 = elements.imageInput1.files[0];
+    const file2 = elements.imageInput2.files[0];
+
+    if (!file1 || !file2) {
+        showError('Silakan unggah kedua gambar terlebih dahulu');
+        return;
+    }
+
+    try {
+        showLoading(true);
+        showError('');
+        elements.resultsSection.classList.remove('active');
+
+        const formData = new FormData();
+        formData.append('image1', file1);
+        formData.append('image2', file2);
+
+        // Mengirim foto ke server Python yang menjalankan PCA
+        const response = await fetch('http://127.0.0.1:5000/compare', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Terjadi kesalahan pada server');
+        }
+
+        // Tampilkan hasil komputasi Python ke HTML
+        elements.scorePercentage.textContent = `${data.percentage}%`;
+        elements.progressFill.style.width = `${data.percentage}%`;
+        
+        elements.euclideanDistance.textContent = data.euclidean;
+        elements.cosineSimilarity.textContent = data.cosine;
+        
+        // Ubah teks indikator deteksi
+        elements.faces1.textContent = "Direduksi PCA (50 fitur)";
+        elements.faces2.textContent = "Direduksi PCA (50 fitur)";
+        
+        const conclusionBox = elements.conclusionBox;
+        const conclusionText = elements.conclusionText;
+
+        if (data.match) {
+            conclusionBox.classList.remove('not-match');
+            conclusionBox.classList.add('match');
+            conclusionText.textContent = `Berdasarkan model PCA yang dilatih dengan dataset, kemiripan wajah mencapai ${data.percentage}%. Kesimpulan: ORANG YANG SAMA.`;
+        } else {
+            conclusionBox.classList.remove('match');
+            conclusionBox.classList.add('not-match');
+            conclusionText.textContent = `Berdasarkan model PCA yang dilatih dengan dataset, kemiripan wajah hanya ${data.percentage}%. Kesimpulan: ORANG YANG BERBEDA.`;
+        }
+        
+        elements.resultsSection.classList.add('active');
+        showLoading(false);
+
+    } catch (error) {
+        console.error('Error:', error);
+        showError(error.message);
+        showLoading(false);
+    }
+}
+
+        async function detectFaces(canvas) {
+            try {
+                const detections = await faceapi
+                    // PERBAIKAN: Gunakan SsdMobilenetv1Options
+                    .detectAllFaces(canvas, new faceapi.SsdMobilenetv1Options({ minConfidence: CONFIG.minConfidence }))
+                    .withFaceLandmarks()
+                    .withFaceDescriptors()
+                    .withFaceExpressions()
+                    .withAgeAndGender();
+
+                return detections;
+            } catch (error) {
+                console.error('Error detecting faces:', error);
+                throw error;
+            }
+        }
+
+        // ============== SIMILARITY CALCULATIONS ==============
+        function calculateSimilarity(descriptor1, descriptor2) {
+            const euclidean = euclideanDistance(descriptor1, descriptor2);
+            const cosine = cosineSimilarity(descriptor1, descriptor2);
+            
+            // Normalize distances to percentage (0-100)
+            const euclideanPercentage = Math.max(0, Math.min(100, (1 - euclidean) * 100));
+            
+            // Cosine similarity already ranges from -1 to 1, convert to 0-100
+            const cosinePercentage = ((cosine + 1) / 2) * 100;
+            
+            // Average both metrics
+            const similarity = (euclideanPercentage + cosinePercentage) / 2;
+            
+            return {
+                similarity: similarity.toFixed(2),
+                percentage: Math.round(similarity),
+                euclidean: euclidean.toFixed(4),
+                cosine: cosine.toFixed(4),
+                match: similarity >= CONFIG.matchThreshold * 100
+            };
+        }
+
+        function euclideanDistance(a, b) {
+            let sum = 0;
+            for (let i = 0; i < a.length; i++) {
+                const diff = a[i] - b[i];
+                sum += diff * diff;
+            }
+            return Math.sqrt(sum);
+        }
+
+        function cosineSimilarity(a, b) {
+            let dotProduct = 0;
+            let normA = 0;
+            let normB = 0;
+            
+            for (let i = 0; i < a.length; i++) {
+                dotProduct += a[i] * b[i];
+                normA += a[i] * a[i];
+                normB += b[i] * b[i];
+            }
+            
+            const denominator = Math.sqrt(normA) * Math.sqrt(normB);
+            return denominator === 0 ? 0 : dotProduct / denominator;
+        }
+
+        // ============== DISPLAY RESULTS ==============
+        function displayResults(similarity, detection1, detection2) {
+            // Update similarity score
+            elements.scorePercentage.textContent = `${similarity.percentage}%`;
+            elements.progressFill.style.width = `${similarity.percentage}%`;
+            
+            // Update metrics
+            elements.euclideanDistance.textContent = similarity.euclidean;
+            elements.cosineSimilarity.textContent = similarity.cosine;
+            elements.faces1.textContent = state.detections1.length;
+            elements.faces2.textContent = state.detections2.length;
+            
+            // Display facial features
+            displayFacialFeatures(detection1, 'facialFeatures1');
+            displayFacialFeatures(detection2, 'facialFeatures2');
+            
+            // Update conclusion
+            updateConclusion(similarity);
+            
+            // Show results
+            elements.resultsSection.classList.add('active');
+        }
+
+        function displayFacialFeatures(detection, elementId) {
+            const container = elements[elementId];
+            container.innerHTML = '';
+            
+            const features = {
+                'Ekspresi Wajah': detection.expressions,
+                'Usia': `${Math.round(detection.age)} tahun`,
+                'Jenis Kelamin': `${detection.gender} (${(detection.genderProbability * 100).toFixed(0)}%)`,
+                'Kepercayaan Deteksi': `${(detection.detection.score * 100).toFixed(1)}%`
+            };
+            
+            // Display expressions
+            if (detection.expressions) {
+                Object.entries(detection.expressions).forEach(([expression, probability]) => {
+                    const div = document.createElement('div');
+                    div.className = 'detection-item';
+                    div.innerHTML = `
+                        <label>${expression.charAt(0).toUpperCase() + expression.slice(1)}</label>
+                        <div class="value">${(probability * 100).toFixed(1)}%</div>
+                    `;
+                    container.appendChild(div);
+                });
+            }
+            
+            // Display other features
+            Object.entries(features).forEach(([label, value]) => {
+                if (label === 'Ekspresi Wajah') return; // Skip expressions as we already did them
+                
+                const div = document.createElement('div');
+                div.className = 'detection-item';
+                div.innerHTML = `
+                    <label>${label}</label>
+                    <div class="value">${value}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+    </script>
+</body>
+</html>
