@@ -8,16 +8,9 @@ from sklearn.decomposition import PCA
 # Inisialisasi parameter top-level antarmuka Streamlit
 st.set_page_config(page_title="Face Recognition PCA", page_icon="🔍", layout="wide")
 
-# Injeksi CSS terstruktur untuk modifikasi hierarki DOM dan implementasi UI Glassmorphism
+# Terminasi elemen bawaan Streamlit (Menu, Footer) untuk optimalisasi viewport
 custom_css = """
 <style>
-    /* Modifikasi background global ke skema warna gradient konstan */
-    .stApp {
-        background: linear-gradient(135deg, #10223f, #051024);
-        color: #ccd6f6;
-    }
-    
-    /* Terminasi visibilitas komponen default Streamlit (Hamburger, Footer, Top Padding) */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -25,113 +18,41 @@ custom_css = """
         padding-top: 2rem !important;
         padding-bottom: 0rem !important;
     }
-    
-    /* Standarisasi properti tipografi */
-    h1, h2, h3, h4, h5, h6, p, label, .stMarkdown {
-        color: #ccd6f6 !important;
-    }
-    
-    /* Styling pseudo-classes pada komponen button (Hover states & Transitions) */
-    div.stButton > button:first-child {
-        background-color: transparent !important;
-        color: #64ffda !important;
-        border: 1px solid #64ffda !important;
-        border-radius: 5px;
-        transition: all 0.3s ease;
-        font-weight: 600;
-        letter-spacing: 1px;
-    }
-    div.stButton > button:first-child:hover {
-        background-color: rgba(100, 255, 218, 0.15) !important;
-        box-shadow: 0 0 15px rgba(100, 255, 218, 0.3) !important;
-        transform: translateY(-2px);
-    }
-    
-    /* Modifikasi container metrics dengan properti backdrop-filter untuk efek Glassmorphism */
-    div[data-testid="metric-container"] {
-        background: rgba(5, 16, 36, 0.55);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 10px;
-        padding: 15px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    }
-    div[data-testid="stMetricValue"] {
-        color: #64ffda !important;
-    }
-    
-    /* Modifikasi state UI pada arsitektur komponen Tabs */
-    button[data-baseweb="tab"] {
-        color: #8892b0 !important;
-    }
-    button[data-baseweb="tab"][aria-selected="true"] {
-        color: #64ffda !important;
-        border-bottom-color: #64ffda !important;
-    }
-    
-    /* Modifikasi area drag-and-drop file uploader */
-    .stFileUploader > div > div {
-        background: rgba(5, 16, 36, 0.4);
-        border: 1px dashed #8892b0;
-        border-radius: 10px;
-    }
-    
-    /* Kelas CSS kustom untuk rendering custom alert element */
-    .custom-alert-success {
-        background: rgba(100, 255, 218, 0.1);
-        border-left: 5px solid #64ffda;
-        padding: 15px;
-        border-radius: 5px;
-        color: #64ffda;
-        font-weight: bold;
-        font-size: 1.2rem;
-        margin-bottom: 20px;
-    }
-    .custom-alert-error {
-        background: rgba(255, 82, 82, 0.1);
-        border-left: 5px solid #ff5252;
-        padding: 15px;
-        border-radius: 5px;
-        color: #ff5252;
-        font-weight: bold;
-        font-size: 1.2rem;
-        margin-bottom: 20px;
-    }
 </style>
 """
 st.markdown(custom_css, unsafe_allow_html=True)
 
-# Render abstraksi header
+# Render abstraksi header utama
 st.title("🔍 Face Recognition & PCA Analysis Dashboard")
 st.markdown("Sistem komparasi wajah dengan reduksi dimensi **PCA**, **Euclidean Distance**, dan **Cosine Similarity**.")
 
 # Komputasi model PCA dan isolasi ke dalam memori cache
 @st.cache_resource
 def train_pca():
-    with st.spinner("Fetching dataset and fitting PCA model..."):
+    with st.spinner("Menginisialisasi dataset dan melatih model PCA..."):
         dataset = fetch_olivetti_faces()
         X = dataset.data
-        pca = PCA(n_components=50, whiten=True)
+        # Resolusi komponen ditingkatkan untuk mereduksi hilangnya varians pada matriks
+        pca = PCA(n_components=100, whiten=True)
         pca.fit(X)
         return pca, X
 
 pca_model, dataset_matrix = train_pca()
 
-# Instansiasi object deteksi Viola-Jones (Haar Cascade)
+# Instansiasi object deteksi wajah Viola-Jones (Haar Cascade)
 cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
 face_cascade = cv2.CascadeClassifier(cascade_path)
 
 def process_face(image_file):
-    # Parsing byte stream image ke array NumPy 
+    # Parsing byte stream image ke representasi array NumPy spasial
     file_bytes = np.asarray(bytearray(image_file.read()), dtype=np.uint8)
     img = cv2.imdecode(file_bytes, cv2.IMREAD_GRAYSCALE)
     
-    # Normalisasi iluminasi lokal (CLAHE)
+    # Normalisasi histogram area lokal (CLAHE)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
     img = clahe.apply(img)
     
-    # Spatial smoothing (Gaussian Blur)
+    # Reduksi high-frequency noise menggunakan kernel filter spasial
     img = cv2.GaussianBlur(img, (5, 5), 0)
     
     # Ekstraksi Region of Interest (ROI) wajah
@@ -141,23 +62,23 @@ def process_face(image_file):
         
     (x, y, w, h) = faces[0]
     
-    # Reduksi margin (Tighter Crop) untuk meminimalisasi noise pada arsitektur data latar
-    margin_x = int(w * 0.15)
-    margin_y = int(h * 0.15)
+    # Modifikasi bounding box (Tighter Crop) untuk mengeliminasi distorsi background dan rambut
+    margin_x = int(w * 0.20)
+    margin_y = int(h * 0.20)
     face_crop = img[y+margin_y : y+h-margin_y, x+margin_x : x+w-margin_x]
     
-    # Downsampling resolusi matriks spasial
+    # Downsampling resolusi spasial untuk sinkronisasi dengan dataset pre-trained
     face_resize = cv2.resize(face_crop, (64, 64))
     
-    # Flattening array multidimensi dan min-max scaling [0, 1]
+    # Transformasi dimensi matriks dan skalar Min-Max scaling [0, 1]
     face_flat = face_resize.flatten() / 255.0 
     
-    # Proyeksi vektor input ke subspace PCA
+    # Proyeksi vektor n-dimensi ke subspace PCA
     face_pca = pca_model.transform([face_flat])[0]
     
     return face_pca, face_resize
 
-# Segmentasi layout UI via instance kolom dan container
+# Segmentasi layout UI via pembagian grid kolom
 st.markdown("---")
 col1, col2 = st.columns(2)
 with col1:
@@ -168,50 +89,50 @@ with col2:
     st.subheader("📷 Image Source 2")
     file2 = st.file_uploader("Upload Image 2", type=["jpg", "png", "jpeg"], key="f2")
 
-# Parameter tuning threshold dinamis
+# Input parameter threshold via komponen antarmuka dinamis
 st.markdown("---")
 threshold = st.slider("⚙️ Threshold Toleransi Kesamaan (%)", min_value=60, max_value=95, value=75, step=1)
 
-# Trigger komputasi matriks
+# Inisialisasi callback komputasi metrik
 if st.button("⚖️ Run Analysis", type="primary", use_container_width=True):
     if file1 and file2:
-        with st.spinner("Mengeksekusi ekstraksi fitur PCA..."):
+        with st.spinner("Mengeksekusi proses komputasi vektor spasial..."):
             vec1, img_crop1 = process_face(file1)
             vec2, img_crop2 = process_face(file2)
             
             if vec1 is None or vec2 is None:
-                # Fallback rendering untuk exception handling
-                st.markdown('<div class="custom-alert-error">Exception: Gagal mendeteksi koordinat wajah pada citra input. Evaluasi kontras spasial citra.</div>', unsafe_allow_html=True)
+                # Terminasi eksekusi dengan exception handler
+                st.error("Exception: Gagal mendeteksi matriks wajah. Pastikan input memiliki kontras spasial yang valid.")
             else:
-                # Komputasi Euclidean Distance (L2 Norm)
+                # Komputasi jarak metrik Euclidean (L2 Norm)
                 diff = vec1 - vec2
                 euclidean_dist = np.sqrt(np.sum(diff ** 2))
                 
-                # Komputasi Cosine Similarity (Dot Product)
+                # Komputasi rasio ortogonalitas (Cosine Similarity)
                 dot_product = np.dot(vec1, vec2)
                 norm_v1 = np.linalg.norm(vec1)
                 norm_v2 = np.linalg.norm(vec2)
                 cosine_sim = dot_product / (norm_v1 * norm_v2) if (norm_v1 * norm_v2) != 0 else 0.0
                 
-                # Konversi skala kosinus ke probabilitas absolut
+                # Normalisasi koefisien [-1, 1] menjadi probabilitas persentase [0, 100]
                 similarity_percentage = int(((cosine_sim + 1) / 2) * 100)
                 
-                # Rendering Custom HTML Output Alert berdasarkan komparasi logical
+                # Render klasifikasi akhir via conditional thresholding
                 st.markdown("---")
                 if similarity_percentage >= threshold:
-                    st.markdown(f'<div class="custom-alert-success">KESIMPULAN: WAJAH IDENTIK ({similarity_percentage}%)</div>', unsafe_allow_html=True)
+                    st.success(f"### KESIMPULAN: WAJAH IDENTIK ({similarity_percentage}%)")
                 else:
-                    st.markdown(f'<div class="custom-alert-error">KESIMPULAN: WAJAH BERBEDA ({similarity_percentage}%)</div>', unsafe_allow_html=True)
+                    st.error(f"### KESIMPULAN: WAJAH BERBEDA ({similarity_percentage}%)")
                 
-                # Rendering blok metric spasial
+                # Render struktur kontainer metric stream
                 m1, m2, m3 = st.columns(3)
                 m1.metric("Tingkat Kesamaan", f"{similarity_percentage}%")
                 m2.metric("Cosine Similarity", f"{cosine_sim:.4f}")
                 m3.metric("Euclidean Distance", f"{euclidean_dist:.4f}")
                 
-                # Isolasi scope render visual ke dalam komponen Tabulasi
+                # Render representasi dashboard matriks
                 st.markdown("---")
-                st.subheader("📊 Visualisasi Fitur PCA")
+                st.subheader("📊 Visualisasi Fitur Spasial PCA")
                 
                 tab1, tab2, tab3 = st.tabs(["Deteksi & Rekonstruksi", "Distribusi Vektor", "Statistik Matriks"])
                 
@@ -221,31 +142,25 @@ if st.button("⚖️ Run Analysis", type="primary", use_container_width=True):
                     c1.image(img_crop1, caption="Input 1 (Processed)")
                     c2.image(img_crop2, caption="Input 2 (Processed)")
                     
-                    # Inverse transformasi arsitektur PCA ke topologi ruang spasial
+                    # Dekompresi representasi fitur eigen ke topologi spasial 2D
                     rekon1 = pca_model.inverse_transform([vec1]).reshape(64, 64)
                     rekon2 = pca_model.inverse_transform([vec2]).reshape(64, 64)
                     
-                    # Casting dan clipping float matrix ke representasi grafis (uint8)
+                    # Transformasi nilai tipe data floating point menjadi integer 8-bit untuk visualisasi citra
                     c3.image(np.clip(rekon1 * 255, 0, 255).astype(np.uint8), caption="Inverse Transform 1")
                     c4.image(np.clip(rekon2 * 255, 0, 255).astype(np.uint8), caption="Inverse Transform 2")
 
                 with tab2:
-                    st.write("**2. Proyeksi Spasial 50 Principal Components**")
+                    st.write(f"**2. Proyeksi Spasial {pca_model.n_components} Principal Components**")
                     fig, ax = plt.subplots(figsize=(10, 3))
-                    # Override color profile canvas Matplotlib
-                    fig.patch.set_facecolor('#051024')
-                    ax.set_facecolor('#051024')
                     
-                    x_axis = np.arange(50)
-                    ax.bar(x_axis - 0.2, vec1, 0.4, label='Vektor 1', color='#64ffda')
-                    ax.bar(x_axis + 0.2, vec2, 0.4, label='Vektor 2', color='#ccd6f6')
+                    x_axis = np.arange(pca_model.n_components)
+                    ax.bar(x_axis - 0.2, vec1, 0.4, label='Vektor 1')
+                    ax.bar(x_axis + 0.2, vec2, 0.4, label='Vektor 2')
                     
-                    ax.set_xlabel("Indeks Komponen", color='#8892b0')
-                    ax.set_ylabel("Magnitudo", color='#8892b0')
-                    ax.tick_params(colors='#8892b0')
-                    for spine in ax.spines.values():
-                        spine.set_edgecolor('#8892b0')
-                    ax.legend(facecolor='#10223f', edgecolor='#8892b0', labelcolor='#ccd6f6')
+                    ax.set_xlabel("Indeks Komponen")
+                    ax.set_ylabel("Magnitudo Koefisien")
+                    ax.legend()
                     st.pyplot(fig)
 
                 with tab3:
@@ -253,34 +168,27 @@ if st.button("⚖️ Run Analysis", type="primary", use_container_width=True):
                     col_a, col_b = st.columns(2)
                     
                     with col_a:
-                        # Ekstraksi dan komputasi kumulatif varians dari set data pelatihan
+                        # Akumulasi distribusi varians spasial set pelatihan
                         explained_variance = pca_model.explained_variance_ratio_
                         cumulative_variance = np.cumsum(explained_variance)
                         
                         fig2, ax2 = plt.subplots(figsize=(5, 3))
-                        fig2.patch.set_facecolor('#051024')
-                        ax2.set_facecolor('#051024')
-                        
-                        ax2.plot(cumulative_variance, marker='o', linestyle='-', color='#64ffda')
-                        ax2.set_title("Cumulative Explained Variance", color='#ccd6f6')
-                        ax2.set_xlabel("n_components", color='#8892b0')
-                        ax2.set_ylabel("Rasio Varians", color='#8892b0')
-                        ax2.tick_params(colors='#8892b0')
-                        for spine in ax2.spines.values():
-                            spine.set_edgecolor('#8892b0')
-                        ax2.grid(True, color='#10223f')
+                        ax2.plot(cumulative_variance, marker='o', linestyle='-')
+                        ax2.set_title("Cumulative Explained Variance")
+                        ax2.set_xlabel("n_components")
+                        ax2.set_ylabel("Rasio Varians")
+                        ax2.grid(True)
                         st.pyplot(fig2)
-                        st.caption(f"Retensi informasi spasial: **{cumulative_variance[-1]*100:.1f}%**.")
+                        st.caption(f"Retensi informasi spasial terakumulasi pada **{cumulative_variance[-1]*100:.1f}%**.")
                         
                     with col_b:
-                        st.write("**Topologi Eigenface (Index 0)**")
-                        # Rendering komponen struktural paling dominan
+                        st.write("**Topologi Eigenface Utama (Index 0)**")
+                        # Rekonstruksi struktur eigenvector dengan magnitudo tertinggi
                         eigenface_0 = pca_model.components_[0].reshape(64, 64)
                         fig3, ax3 = plt.subplots(figsize=(3, 3))
-                        fig3.patch.set_facecolor('#051024')
                         ax3.imshow(eigenface_0, cmap='gray')
                         ax3.axis('off')
                         st.pyplot(fig3)
     else:
-        # Fallback requirement block
-        st.markdown('<div class="custom-alert-error">Harap integrasikan kedua input file citra sebelum inisialisasi proses komputasi.</div>', unsafe_allow_html=True)
+        # Fallback eksekusi jika pre-kondisi file I/O tidak terpenuhi
+        st.info("Sistem standby: Menunggu input file citra sebelum komputasi dieksekusi.")
