@@ -14,7 +14,7 @@ st.markdown("Sistem komparasi wajah dengan reduksi dimensi **PCA**, **Euclidean 
 # --- LOAD MODEL & DATASET ---
 @st.cache_resource
 def train_pca():
-    with st.spinner("Mengunduh dataset LFW dan melatih model PCA... (Hanya sekali)"):
+    with st.spinner("Mengunduh dataset Olivetti dan melatih model PCA... (Hanya sekali)"):
         dataset = fetch_olivetti_faces()
         X = dataset.data
         pca = PCA(n_components=50, whiten=True)
@@ -32,15 +32,29 @@ def process_face(image_file):
     file_bytes = np.asarray(bytearray(image_file.read()), dtype=np.uint8)
     img = cv2.imdecode(file_bytes, cv2.IMREAD_GRAYSCALE)
     
+    # 1. PERBAIKAN: Ratakan pencahayaan pakai CLAHE sebelum deteksi wajah
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    img = clahe.apply(img)
+    
     faces = face_cascade.detectMultiScale(img, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
     if len(faces) == 0:
         return None, None
         
     (x, y, w, h) = faces[0]
-    face_crop = img[y:y+h, x:x+w]
+    
+    # 2. PERBAIKAN: Tighter Crop (Potong margin biar fokus ke area inti wajah, buang rambut/background)
+    margin_x = int(w * 0.15) # Potong 15% dari kiri dan kanan
+    margin_y = int(h * 0.15) # Potong 15% dari atas dan bawah
+    
+    face_crop = img[y+margin_y : y+h-margin_y, x+margin_x : x+w-margin_x]
+    
+    # Resize ke 64x64 sesuai dataset Olivetti
     face_resize = cv2.resize(face_crop, (64, 64))
     
-    face_flat = face_resize.flatten()
+    # 3. PERBAIKAN FATAL: Normalisasi nilai piksel ke [0, 1] agar seirama dengan Olivetti
+    face_flat = face_resize.flatten() / 255.0 
+    
+    # Ekstrak PCA
     face_pca = pca_model.transform([face_flat])[0]
     
     return face_pca, face_resize
@@ -73,11 +87,13 @@ if st.button("⚖️ Bandingkan dan Analisis", type="primary", use_container_wid
                 norm_v1 = np.linalg.norm(vec1)
                 norm_v2 = np.linalg.norm(vec2)
                 cosine_sim = dot_product / (norm_v1 * norm_v2) if (norm_v1 * norm_v2) != 0 else 0.0
+                
+                # 4. PERBAIKAN: Thresholding sedikit diubah agar lebih sensitif membedakan orang
                 similarity_percentage = int(((cosine_sim + 1) / 2) * 100)
                 
-                # --- HASIL UTAMA ---
+                # Karena data sekarang sudah ternormalisasi, threshold kita naikkan ke 85% untuk cegah False Positive
                 st.markdown("---")
-                if similarity_percentage >= 70:
+                if similarity_percentage >= 85:
                     st.success(f"### KESIMPULAN: WAJAH COCOK ({similarity_percentage}%) - ORANG YANG SAMA")
                 else:
                     st.error(f"### KESIMPULAN: WAJAH BERBEDA ({similarity_percentage}%)")
@@ -94,17 +110,18 @@ if st.button("⚖️ Bandingkan dan Analisis", type="primary", use_container_wid
                 tab1, tab2, tab3 = st.tabs(["Deteksi & Rekonstruksi", "Distribusi Vektor", "Statistik PCA"])
                 
                 with tab1:
-                    st.write("**1. Hasil Cropping OpenCV (64x64 pixel)**")
+                    st.write("**1. Hasil Cropping OpenCV (Tighter Crop & CLAHE)**")
                     c1, c2, c3, c4 = st.columns(4)
-                    c1.image(img_crop1, caption="Wajah 1 (Asli)")
-                    c2.image(img_crop2, caption="Wajah 2 (Asli)")
+                    c1.image(img_crop1, caption="Wajah 1 (Pre-processed)")
+                    c2.image(img_crop2, caption="Wajah 2 (Pre-processed)")
                     
-                    # Rekonstruksi balik dari PCA ke Gambar (Biar keliatan kerjanya PCA)
+                    # Rekonstruksi balik dari PCA ke Gambar
                     rekon1 = pca_model.inverse_transform([vec1]).reshape(64, 64)
                     rekon2 = pca_model.inverse_transform([vec2]).reshape(64, 64)
                     
-                    c3.image(np.clip(rekon1, 0, 255).astype(np.uint8), caption="Rekonstruksi PCA 1")
-                    c4.image(np.clip(rekon2, 0, 255).astype(np.uint8), caption="Rekonstruksi PCA 2")
+                    # Kalikan 255 karena tadi kita bagi 255
+                    c3.image(np.clip(rekon1 * 255, 0, 255).astype(np.uint8), caption="Rekonstruksi PCA 1")
+                    c4.image(np.clip(rekon2 * 255, 0, 255).astype(np.uint8), caption="Rekonstruksi PCA 2")
 
                 with tab2:
                     st.write("**2. Perbandingan 50 Fitur Komponen (Vektor)**")
@@ -116,14 +133,12 @@ if st.button("⚖️ Bandingkan dan Analisis", type="primary", use_container_wid
                     ax.set_ylabel("Nilai Bobot")
                     ax.legend()
                     st.pyplot(fig)
-                    st.caption("Jika diagram batang biru dan oranye polanya mirip, nilai Euclidean akan kecil dan Cosine akan mendekati 1.")
 
                 with tab3:
                     st.write("**3. Evaluasi Kinerja PCA (Dataset Level)**")
                     col_a, col_b = st.columns(2)
                     
                     with col_a:
-                        # Grafik Cumulative Variance
                         explained_variance = pca_model.explained_variance_ratio_
                         cumulative_variance = np.cumsum(explained_variance)
                         
@@ -137,13 +152,11 @@ if st.button("⚖️ Bandingkan dan Analisis", type="primary", use_container_wid
                         st.caption(f"50 komponen utama mampu mempertahankan **{cumulative_variance[-1]*100:.1f}%** informasi dari gambar asli.")
                         
                     with col_b:
-                        # Nampilin "Eigenface" pertama (Wajah Rata-rata dari Dataset)
                         st.write("**Eigenface Utama (Komponen #1)**")
                         eigenface_0 = pca_model.components_[0].reshape(64, 64)
                         fig3, ax3 = plt.subplots(figsize=(3, 3))
                         ax3.imshow(eigenface_0, cmap='gray')
                         ax3.axis('off')
                         st.pyplot(fig3)
-                        st.caption("Ini adalah pola fitur wajah paling dominan yang diekstrak algoritma dari dataset latih.")
     else:
         st.warning("Silakan unggah kedua foto terlebih dahulu.")
