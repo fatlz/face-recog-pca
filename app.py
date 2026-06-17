@@ -9,7 +9,7 @@ import time
 # Konfigurasi top-level antarmuka dan metadata halaman
 st.set_page_config(page_title="Face Recognition PCA", page_icon="🔍", layout="wide")
 
-# Terminasi elemen margin atas dan menu default Streamlit
+# Terminasi elemen margin atas dan menu default Streamlit untuk optimalisasi viewport
 custom_css = """
 <style>
     #MainMenu {visibility: hidden;}
@@ -23,18 +23,18 @@ custom_css = """
 """
 st.markdown(custom_css, unsafe_allow_html=True)
 
-# Instansiasi komponen Sidebar untuk parameter kontrol model
-with st.sidebar:
-    st.header("⚙️ Parameter Kontrol")
-    st.markdown("Sesuaikan sensitivitas komputasi model:")
-    # Parameter threshold diisolasi di luar viewport utama
-    threshold = st.slider("Threshold Kesamaan (%)", min_value=60, max_value=95, value=75, step=1)
-    st.divider()
-    st.caption("Dikembangkan untuk pengujian arsitektur reduksi dimensi.")
-
 # Render header viewport utama
 st.title("🔍 Face Recognition & PCA Dashboard")
-st.markdown("Sistem komparasi wajah spasial berbasis **Principal Component Analysis**.")
+st.markdown("Sistem komparasi wajah spasial berbasis reduksi dimensi dimensional.")
+
+# Panel informasi eksplisit untuk validasi akademis (Requirement Dosen)
+st.info("""
+**Spesifikasi Arsitektur Sistem:**
+* **Metode Ekstraksi Fitur:** Principal Component Analysis (PCA)
+* **Dataset Pelatihan (Pre-trained):** Olivetti Faces Database
+* **Metrik Komparasi Vektor 1:** Euclidean Distance (L2 Norm)
+* **Metrik Komparasi Vektor 2:** Cosine Similarity (Dot Product)
+""")
 st.divider()
 
 # Alokasi cache memori untuk pre-trained model PCA
@@ -43,6 +43,7 @@ def train_pca():
     with st.spinner("Menginisialisasi dataset latih dan matriks PCA..."):
         dataset = fetch_olivetti_faces()
         X = dataset.data
+        # Penetapan 100 komponen utama untuk retensi varians spasial
         pca = PCA(n_components=100, whiten=True)
         pca.fit(X)
         return pca, X
@@ -84,7 +85,12 @@ def process_face(image_file):
     
     return face_pca, face_resize
 
-# Fragmentasi layout ke dalam struktur grid 2 kolom
+# Parameter threshold dieksekusi di blok tata letak utama (Main Layout)
+st.markdown("### ⚙️ Parameter Kontrol Toleransi")
+threshold = st.slider("Penyesuaian Sensitivitas Probabilitas Kesamaan (%)", min_value=60, max_value=95, value=75, step=1)
+st.markdown("---")
+
+# Fragmentasi layout ke dalam struktur grid 2 kolom untuk I/O
 col1, col2 = st.columns(2)
 with col1:
     st.info("Unggah citra referensi (Input A)")
@@ -102,7 +108,7 @@ if st.button("🚀 Eksekusi Komputasi Matriks", type="primary", use_container_wi
         
         vec1, img_crop1 = process_face(file1)
         progress_bar.progress(40, text="Memproses transformasi matriks spasial citra A...")
-        time.sleep(0.3) # Artificial delay untuk transisi UI
+        time.sleep(0.3) 
         
         vec2, img_crop2 = process_face(file2)
         progress_bar.progress(80, text="Memproses transformasi matriks spasial citra B...")
@@ -127,9 +133,6 @@ if st.button("🚀 Eksekusi Komputasi Matriks", type="primary", use_container_wi
             time.sleep(0.3)
             progress_bar.empty()
             
-            # Eksekusi komponen toast notification
-            st.toast('Analisis jarak vektor berhasil dieksekusi!', icon='✅')
-            
             # Klasifikasi logical thresholding
             st.write("### Hasil Evaluasi Vektor")
             if similarity_percentage >= threshold:
@@ -143,58 +146,59 @@ if st.button("🚀 Eksekusi Komputasi Matriks", type="primary", use_container_wi
             m2.metric("Nilai Cosine Similarity", f"{cosine_sim:.4f}")
             m3.metric("Euclidean Distance (L2)", f"{euclidean_dist:.4f}")
             
-            # Isolasi kompleksitas visual ke dalam arsitektur Expander
-            with st.expander("📊 Tampilkan Detail Analisis Matriks & Visualisasi Spasial PCA", expanded=False):
-                tab1, tab2, tab3 = st.tabs(["Rekonstruksi Spasial", "Distribusi Fitur Vektor", "Evaluasi Model"])
+            # Render blok tabulasi analitik secara statis (Tanpa Expander)
+            st.markdown("---")
+            st.subheader("📊 Detail Analisis Matriks & Visualisasi Spasial PCA")
+            tab1, tab2, tab3 = st.tabs(["Rekonstruksi Spasial", "Distribusi Fitur Vektor", "Evaluasi Model"])
+            
+            with tab1:
+                st.write("**Output Isolasi ROI (CLAHE + Filtering)**")
+                c1, c2, c3, c4 = st.columns(4)
+                c1.image(img_crop1, caption="Input A (Processed)")
+                c2.image(img_crop2, caption="Input B (Processed)")
                 
-                with tab1:
-                    st.write("**Output Isolasi ROI (CLAHE + Filtering)**")
-                    c1, c2, c3, c4 = st.columns(4)
-                    c1.image(img_crop1, caption="Input A (Processed)")
-                    c2.image(img_crop2, caption="Input B (Processed)")
-                    
-                    # Dekompresi vektor eigen ke arsitektur spasial 2D
-                    rekon1 = pca_model.inverse_transform([vec1]).reshape(64, 64)
-                    rekon2 = pca_model.inverse_transform([vec2]).reshape(64, 64)
-                    
-                    c3.image(np.clip(rekon1 * 255, 0, 255).astype(np.uint8), caption="Inverse Transform A")
-                    c4.image(np.clip(rekon2 * 255, 0, 255).astype(np.uint8), caption="Inverse Transform B")
+                # Dekompresi vektor eigen ke arsitektur spasial 2D
+                rekon1 = pca_model.inverse_transform([vec1]).reshape(64, 64)
+                rekon2 = pca_model.inverse_transform([vec2]).reshape(64, 64)
+                
+                c3.image(np.clip(rekon1 * 255, 0, 255).astype(np.uint8), caption="Inverse Transform A")
+                c4.image(np.clip(rekon2 * 255, 0, 255).astype(np.uint8), caption="Inverse Transform B")
 
-                with tab2:
-                    st.write(f"**Proyeksi Vektor pada {pca_model.n_components} Principal Components**")
-                    fig, ax = plt.subplots(figsize=(10, 3))
-                    
-                    x_axis = np.arange(pca_model.n_components)
-                    ax.bar(x_axis - 0.2, vec1, 0.4, label='Vektor A')
-                    ax.bar(x_axis + 0.2, vec2, 0.4, label='Vektor B')
-                    
-                    ax.set_xlabel("Indeks Komponen Dimensional")
-                    ax.set_ylabel("Magnitudo Koefisien")
-                    ax.legend()
-                    st.pyplot(fig)
+            with tab2:
+                st.write(f"**Proyeksi Vektor pada {pca_model.n_components} Principal Components**")
+                fig, ax = plt.subplots(figsize=(10, 3))
+                
+                x_axis = np.arange(pca_model.n_components)
+                ax.bar(x_axis - 0.2, vec1, 0.4, label='Vektor A')
+                ax.bar(x_axis + 0.2, vec2, 0.4, label='Vektor B')
+                
+                ax.set_xlabel("Indeks Komponen Dimensional")
+                ax.set_ylabel("Magnitudo Koefisien")
+                ax.legend()
+                st.pyplot(fig)
 
-                with tab3:
-                    col_a, col_b = st.columns(2)
-                    with col_a:
-                        st.write("**Cumulative Explained Variance**")
-                        explained_variance = pca_model.explained_variance_ratio_
-                        cumulative_variance = np.cumsum(explained_variance)
-                        
-                        fig2, ax2 = plt.subplots(figsize=(5, 3))
-                        ax2.plot(cumulative_variance, marker='o', linestyle='-')
-                        ax2.set_xlabel("Jumlah Komponen Utama")
-                        ax2.set_ylabel("Rasio Varians Terenkapsulasi")
-                        ax2.grid(True)
-                        st.pyplot(fig2)
-                        st.caption(f"Retensi informasi terakumulasi: **{cumulative_variance[-1]*100:.1f}%**.")
-                        
-                    with col_b:
-                        st.write("**Topologi Eigenface (Index 0)**")
-                        # Rendering struktur eigenvector dengan varians absolut tertinggi
-                        eigenface_0 = pca_model.components_[0].reshape(64, 64)
-                        fig3, ax3 = plt.subplots(figsize=(3, 3))
-                        ax3.imshow(eigenface_0, cmap='gray')
-                        ax3.axis('off')
-                        st.pyplot(fig3)
+            with tab3:
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    st.write("**Cumulative Explained Variance**")
+                    explained_variance = pca_model.explained_variance_ratio_
+                    cumulative_variance = np.cumsum(explained_variance)
+                    
+                    fig2, ax2 = plt.subplots(figsize=(5, 3))
+                    ax2.plot(cumulative_variance, marker='o', linestyle='-')
+                    ax2.set_xlabel("Jumlah Komponen Utama")
+                    ax2.set_ylabel("Rasio Varians Terenkapsulasi")
+                    ax2.grid(True)
+                    st.pyplot(fig2)
+                    st.caption(f"Retensi informasi terakumulasi: **{cumulative_variance[-1]*100:.1f}%**.")
+                    
+                with col_b:
+                    st.write("**Topologi Eigenface (Index 0)**")
+                    # Rendering struktur eigenvector dengan varians absolut tertinggi
+                    eigenface_0 = pca_model.components_[0].reshape(64, 64)
+                    fig3, ax3 = plt.subplots(figsize=(3, 3))
+                    ax3.imshow(eigenface_0, cmap='gray')
+                    ax3.axis('off')
+                    st.pyplot(fig3)
     else:
         st.warning("Pre-condition failed: Masukkan kedua file citra pada antarmuka I/O di atas.")
